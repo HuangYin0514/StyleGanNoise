@@ -1,39 +1,21 @@
-import os
-import sys
-import math
-import fire
 import json
 from math import floor, log2
 from random import random
 from shutil import rmtree
-from functools import partial
 import multiprocessing
 import torch.backends.cudnn as cudnn
 
 import numpy as np
 import torch
-from torch import nn
 from torch.utils import data
 import torch.nn.functional as F
 
-from torch_optimizer import DiffGrad
-from torch.autograd import grad as torch_grad
-
 import torchvision
-from torchvision import transforms
 
-from PIL import Image
 from pathlib import Path
-from utils.utils import *
-from datasets.Datasets import *
-from datasets.Datasets import *
-from model.Conv2DMod import *
-from model.Generator import *
-from model.Discriminator import *
-from model.StyleVectorizer import *
-from model.Stylegan import *
-
-# assert torch.cuda.is_available(), 'You need to have an Nvidia GPU with CUDA installed.'
+from utils.utils import cycle, image_noise, latent_to_w, styles_def_to_tensor, noise_list, noise, evaluate_in_chunks, mixed_list, gradient_penalty, raise_if_nan, NanException, EMA, default
+from datasets.Datasets import Dataset
+from model.Stylegan import StyleGAN2
 
 num_cores = multiprocessing.cpu_count()
 
@@ -43,10 +25,6 @@ EPS = 1e-8
 device = torch.device("cuda:0" if (torch.cuda.is_available()) else "cpu")
 # speed up
 cudnn.benchmark = True
-
-
-class NanException(Exception):
-    pass
 
 
 class Trainer():
@@ -172,8 +150,7 @@ class Trainer():
         self.GAN.D_opt.zero_grad()
 
         for i in range(self.gradient_accumulate_every):
-            get_latents_fn = mixed_list if random(
-            ) < self.mixed_prob else noise_list
+            get_latents_fn = mixed_list if random() < self.mixed_prob else noise_list
             style = get_latents_fn(batch_size, num_layers, latent_dim)
             noise = image_noise(batch_size, image_size)
 
@@ -300,12 +277,10 @@ class Trainer():
         num_layers = self.GAN.G.num_layers
 
         # latents and noise
-
         latents = noise_list(num_rows**2, num_layers, latent_dim)
         n = image_noise(num_rows**2, image_size)
 
         # regular
-
         generated_images = generate_images(self.GAN.S, self.GAN.G, latents, n)
         torchvision.utils.save_image(generated_images,
                                      str(self.results_dir / self.name /
@@ -313,7 +288,6 @@ class Trainer():
                                      nrow=num_rows)
 
         # moving averages
-
         generated_images = self.generate_truncated(self.GAN.SE,
                                                    self.GAN.GE,
                                                    latents,
@@ -325,7 +299,6 @@ class Trainer():
                                      nrow=num_rows)
 
         # mixing regularities
-
         def tile(a, dim, n_tile):
             init_dim = a.size(dim)
             repeat_idx = [1] * a.dim()
@@ -355,13 +328,7 @@ class Trainer():
                                      nrow=num_rows)
 
     @torch.no_grad()
-    def generate_truncated(self,
-                           S,
-                           G,
-                           style,
-                           noi,
-                           trunc_psi=0.6,
-                           num_image_tiles=8):
+    def generate_truncated(self, S, G, style, noi, trunc_psi=0.6, num_image_tiles=8):
         latent_dim = G.latent_dim
 
         if self.av is None:
@@ -378,8 +345,8 @@ class Trainer():
             w_space.append((tmp, num_layers))
 
         w_styles = styles_def_to_tensor(w_space)
-        generated_images = evaluate_in_chunks(self.batch_size, G, w_styles,
-                                              noi)
+        generated_images = evaluate_in_chunks(
+            self.batch_size, G, w_styles, noi)
         return generated_images.clamp_(0., 1.)
 
     def print_log(self):

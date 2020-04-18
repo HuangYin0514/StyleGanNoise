@@ -1,2 +1,3 @@
 # stylegan2
-111
+
+    原始style Gan运行在kaggle上

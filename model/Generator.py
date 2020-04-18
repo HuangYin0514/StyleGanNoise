@@ -1,36 +1,12 @@
-
-import os
-import sys
-import math
-import fire
-import json
-from math import floor, log2
-from random import random
-from shutil import rmtree
-from functools import partial
-import multiprocessing
-import torch.backends.cudnn as cudnn
-
-import numpy as np
 import torch
 from torch import nn
-from torch.utils import data
-import torch.nn.functional as F
+from math import log2
+from utils.utils import leaky_relu
+from model.Conv2DMod import Conv2DMod
 
-from torch_optimizer import DiffGrad
-from torch.autograd import grad as torch_grad
-
-import torchvision
-from torchvision import transforms
-
-from PIL import Image
-from pathlib import Path
-from utils.utils import *
-from  model.Conv2DMod import *
-from  model.StyleVectorizer import *
 
 class RGBBlock(nn.Module):
-    def __init__(self, latent_dim, input_channel, upsample, rgba = False):
+    def __init__(self, latent_dim, input_channel, upsample, rgba=False):
         super().__init__()
         self.input_channel = input_channel
         self.to_style = nn.Linear(latent_dim, input_channel)
@@ -38,7 +14,8 @@ class RGBBlock(nn.Module):
         out_filters = 3 if not rgba else 4
         self.conv = Conv2DMod(input_channel, out_filters, 1, demod=False)
 
-        self.upsample = nn.Upsample(scale_factor = 2, mode='bilinear', align_corners=False) if upsample else None
+        self.upsample = nn.Upsample(
+            scale_factor=2, mode='bilinear', align_corners=False) if upsample else None
 
     def forward(self, x, prev_rgb, istyle):
         b, c, h, w = x.shape
@@ -55,14 +32,15 @@ class RGBBlock(nn.Module):
 
 
 class GeneratorBlock(nn.Module):
-    def __init__(self, latent_dim, input_channels, filters, upsample = True, upsample_rgb = True, rgba = False):
+    def __init__(self, latent_dim, input_channels, filters, upsample=True, upsample_rgb=True, rgba=False):
         super().__init__()
-        self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False) if upsample else None
+        self.upsample = nn.Upsample(
+            scale_factor=2, mode='bilinear', align_corners=False) if upsample else None
 
         self.to_style1 = nn.Linear(latent_dim, input_channels)
         self.to_noise1 = nn.Linear(1, filters)
         self.conv1 = Conv2DMod(input_channels, filters, 3)
-        
+
         self.to_style2 = nn.Linear(latent_dim, filters)
         self.to_noise2 = nn.Linear(1, filters)
         self.conv2 = Conv2DMod(filters, filters, 3)
@@ -90,9 +68,8 @@ class GeneratorBlock(nn.Module):
         return x, rgb
 
 
-
 class Generator(nn.Module):
-    def __init__(self, image_size, latent_dim, network_capacity = 16, transparent = False):
+    def __init__(self, image_size, latent_dim, network_capacity=16, transparent=False):
         super().__init__()
         self.image_size = image_size
         self.latent_dim = latent_dim
@@ -100,7 +77,8 @@ class Generator(nn.Module):
 
         init_channels = 4 * network_capacity
         self.initial_block = nn.Parameter(torch.randn((init_channels, 4, 4)))
-        filters = [init_channels] + [network_capacity * (2 ** (i + 1)) for i in range(self.num_layers)][::-1]
+        filters = [init_channels] + [network_capacity *
+                                     (2 ** (i + 1)) for i in range(self.num_layers)][::-1]
         in_out_pairs = zip(filters[0:-1], filters[1:])
 
         self.blocks = nn.ModuleList([])
@@ -112,15 +90,14 @@ class Generator(nn.Module):
                 latent_dim,
                 in_chan,
                 out_chan,
-                upsample = not_first,
-                upsample_rgb = not_last,
-                rgba = transparent
+                upsample=not_first,
+                upsample_rgb=not_last,
+                rgba=transparent
             )
             self.blocks.append(block)
 
     def forward(self, styles, input_noise):
         batch_size = styles.shape[0]
-        image_size = self.image_size
         x = self.initial_block.expand(batch_size, -1, -1, -1)
         styles = styles.transpose(0, 1)
 

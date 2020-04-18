@@ -1,3 +1,3 @@
-# stylegan2
+# StyleganNoise
 
-    原始style Gan运行在kaggle上
+    在原始styleGAN的基础上增加noise层

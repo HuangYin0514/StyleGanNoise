@@ -1,1 +1,1 @@
-from model.Stylegan import  StyleGAN2
+from model.Stylegan import StyleGAN2

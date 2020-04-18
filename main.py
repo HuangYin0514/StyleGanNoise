@@ -2,7 +2,8 @@
 import fire
 from retry.api import retry_call
 from tqdm import tqdm
-from stylegan2_pytorch import Trainer, NanException
+from run import Trainer
+from utils import NanException
 from datetime import datetime
 
 

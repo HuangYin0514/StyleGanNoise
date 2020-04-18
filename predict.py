@@ -3,8 +3,8 @@
 # %%
 from IPython import get_ipython
 import torch
-from model.Stylegan import StyleGAN2
-from utils.utils import styles_def_to_tensor, noise, evaluate_in_chunks, latent_to_w, noise_list, image_noise
+from model import StyleGAN2
+from utils import *
 import numpy as np
 import torchvision.utils as vutils
 import matplotlib.pyplot as plt

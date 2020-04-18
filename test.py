@@ -1,6 +1,8 @@
+import sys
+sys.path.append("..") # 这句是为了导入_config
 import torch
-from utils import noise
 import numpy as np
+from utils import noise
 
 
 if __name__ == "__main__":

@@ -1,13 +1,12 @@
-
 from torch import nn
 from torch_optimizer import DiffGrad
 
-from utils import EMA, set_requires_grad
-from model import Generator, Discriminator, StyleVectorizer
+from utils import *
+from net import *
 
 
 class StyleGAN2(nn.Module):
-    def __init__(self, image_size, latent_dim=512, style_depth=8,
+    def __init__(self, image_size, latent_dim=512, noise_dim=512, style_depth=8,
                  network_capacity=16, transparent=False, steps=1, lr=1e-4):
         super().__init__()
         self.lr = lr
@@ -15,23 +14,23 @@ class StyleGAN2(nn.Module):
         self.ema_updater = EMA(0.995)
 
         self.S = StyleVectorizer(latent_dim, style_depth)
+        self.N = NoiseVectorizer(noise_dim)
         self.G = Generator(image_size, latent_dim,
                            network_capacity, transparent=transparent)
         self.D = Discriminator(
             image_size, network_capacity, transparent=transparent)
 
         self.SE = StyleVectorizer(latent_dim, style_depth)
+        self.NE = NoiseVectorizer(noise_dim)
         self.GE = Generator(image_size, latent_dim,
                             network_capacity, transparent=transparent)
 
         set_requires_grad(self.SE, False)
+        set_requires_grad(self.NE, False)
         set_requires_grad(self.GE, False)
 
-        generator_params = list(self.G.parameters()) + \
-            list(self.S.parameters())
-        self.G_opt = DiffGrad(generator_params, lr=self.lr, betas=(0.5, 0.9))
-        self.D_opt = DiffGrad(self.D.parameters(),
-                              lr=self.lr, betas=(0.5, 0.9))
+        generator_params = list(self.N.parameters())
+        self.N_opt = DiffGrad(generator_params, lr=self.lr, betas=(0.5, 0.9))
 
         self._init_weights()
         self.reset_parameter_averaging()
@@ -61,6 +60,7 @@ class StyleGAN2(nn.Module):
 
     def reset_parameter_averaging(self):
         self.SE.load_state_dict(self.S.state_dict())
+        self.SE.load_state_dict(self.N.state_dict())
         self.GE.load_state_dict(self.G.state_dict())
 
     def forward(self, x):

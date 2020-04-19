@@ -3,7 +3,7 @@ from utils import leaky_relu
 
 
 class NoiseVectorizer(nn.Module):
-    def __init__(self, emb, depth):
+    def __init__(self, emb):
         super().__init__()
 
         self.net = nn.Sequential(

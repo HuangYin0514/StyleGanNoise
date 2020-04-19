@@ -7,11 +7,9 @@ import numpy as np
 from torch import nn
 
 # %%
-torch.FloatTensor(64, 10).shape
+list1 = [1, 2, 3, 4]
 
-torch.Tensor(64, 10).shape
-
-
-
+list2 = [1, 2, 3, 4]
+list1 + list2
 
 # %%

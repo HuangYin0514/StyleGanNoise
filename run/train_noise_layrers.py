@@ -15,7 +15,7 @@ import torchvision
 from pathlib import Path
 from utils import *
 from datasets import Dataset
-from model import StyleGAN2
+from net import StyleGAN2
 
 num_cores = multiprocessing.cpu_count()
 

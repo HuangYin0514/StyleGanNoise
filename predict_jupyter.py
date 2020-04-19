@@ -127,7 +127,8 @@ tt = int(num_layers / 2)
 mixed_latents = [(tmp1, tt), (tmp2, num_layers - tt)]
 
 n = torch.FloatTensor(num_rows**2, image_size, image_size, 1).uniform_(0., 1.).to(device)
-
+import torch.nn.functional as F
+n = F.sigmoid(n)
 generated_images = generate_truncated(GAN.SE,
                                       GAN.GE,
                                       mixed_latents,

@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from math import log2
-from utils.utils import leaky_relu
+from utils import leaky_relu
 from model.Conv2DMod import Conv2DMod
 
 

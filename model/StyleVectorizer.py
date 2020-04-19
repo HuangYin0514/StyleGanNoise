@@ -1,5 +1,5 @@
 from torch import nn
-from utils.utils import leaky_relu
+from utils import leaky_relu
 
 
 class StyleVectorizer(nn.Module):

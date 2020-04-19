@@ -24,7 +24,7 @@ from torchvision import transforms
 
 from PIL import Image
 from pathlib import Path
-from utils.utils import *
+from utils import *
 
 # constants
 EPS = 1e-8

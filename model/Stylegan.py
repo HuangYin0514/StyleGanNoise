@@ -2,10 +2,8 @@
 from torch import nn
 from torch_optimizer import DiffGrad
 
-from utils.utils import EMA, set_requires_grad
-from model.Generator import Generator
-from model.Discriminator import Discriminator
-from model.StyleVectorizer import StyleVectorizer
+from utils import EMA, set_requires_grad
+from model import Generator, Discriminator, StyleVectorizer
 
 
 class StyleGAN2(nn.Module):

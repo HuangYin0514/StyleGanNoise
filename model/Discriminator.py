@@ -25,9 +25,9 @@ from torchvision import transforms
 
 from PIL import Image
 from pathlib import Path
-from utils.utils import *
-from  model.Conv2DMod import *
-from  model.StyleVectorizer import *
+from utils import *
+from model import *
+
 
 class DiscriminatorBlock(nn.Module):
     def __init__(self, input_channels, filters, downsample=True):
@@ -41,7 +41,8 @@ class DiscriminatorBlock(nn.Module):
             leaky_relu(0.2)
         )
 
-        self.downsample = nn.Conv2d(filters, filters, 3, padding = 1, stride = 2) if downsample else None
+        self.downsample = nn.Conv2d(
+            filters, filters, 3, padding=1, stride=2) if downsample else None
 
     def forward(self, x):
         res = self.conv_res(x)
@@ -51,14 +52,16 @@ class DiscriminatorBlock(nn.Module):
             x = self.downsample(x)
         return x
 
+
 class Discriminator(nn.Module):
-    def __init__(self, image_size, network_capacity = 16, transparent = False):
+    def __init__(self, image_size, network_capacity=16, transparent=False):
         super().__init__()
         num_layers = int(log2(image_size) - 1)
         num_init_filters = 3 if not transparent else 4
 
         blocks = []
-        filters = [num_init_filters] + [(network_capacity) * (2 ** i) for i in range(num_layers + 1)]
+        filters = [num_init_filters] + \
+            [(network_capacity) * (2 ** i) for i in range(num_layers + 1)]
         chan_in_out = list(zip(filters[0:-1], filters[1:]))
 
         blocks = []
@@ -68,7 +71,7 @@ class Discriminator(nn.Module):
             block = DiscriminatorBlock(
                 in_chan,
                 out_chan,
-                downsample = is_not_last
+                downsample=is_not_last
             )
             blocks.append(block)
 

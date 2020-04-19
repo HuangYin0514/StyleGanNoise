@@ -56,6 +56,7 @@ class StyleGAN2(nn.Module):
                     old_weight, up_weight)
 
         update_moving_average(self.SE, self.S)
+        update_moving_average(self.NE, self.N)
         update_moving_average(self.GE, self.G)
 
     def reset_parameter_averaging(self):

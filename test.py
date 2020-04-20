@@ -12,4 +12,5 @@ if __name__ == '__main__':
     res = latent_to_nosie(NoiseVectorizer, a)
     print('123')
     ####
+    #1
     print(res)

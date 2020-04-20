@@ -9,7 +9,6 @@ device = torch.device("cuda:0" if (torch.cuda.is_available()) else "cpu")
 
 
 class NanException(Exception):
-    print('find a exception of NanException in utils')
     pass
 
 
@@ -71,6 +70,9 @@ def latent_to_w(style_vectorizer, latent_descr):
 def image_noise(n, im_size):
     return torch.FloatTensor(n, im_size, im_size, 1).uniform_(0., 1.).to(device)
 
+
+def custom_image_noise(n, latent_dim):
+    return torch.FloatTensor(n, latent_dim).uniform_(-1, 1).to(device)
 
 def leaky_relu(p):
     return nn.LeakyReLU(p, inplace=True)

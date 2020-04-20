@@ -4,19 +4,18 @@ import numpy as np
 import time
 from retry.api import retry_call
 from utils import *
+import fire
 
-a = 1
 
-
-def make_trouble():
-    global a
-    a += 1
-    print(a)
-    raise NanException
+def make_trouble(a=1, b=2, c=3, d=4, *args, **kwargs):
+    print(a, b, c, d, d, e)
+    print(*args)
+    print(kwargs)
 
 
 if __name__ == '__main__':
-    list1 = [1, 2, 3, 4]
-    loader = cycle(list1)
-    for _ in range(10):
-        print(next(loader))
+    total_noise_loss = torch.tensor(0.).to(device)
+    if any(torch.isnan(l) for l in (total_noise_loss)):
+        print(
+            f'NaN detected for generator or discriminator. Loading from checkpoint '
+        )

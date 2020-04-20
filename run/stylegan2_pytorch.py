@@ -14,7 +14,7 @@ import torchvision
 
 from pathlib import Path
 from utils import *
-from datasets import Dataset
+from datasets.Datasets import Dataset
 from net import StyleGAN2
 
 num_cores = multiprocessing.cpu_count()
@@ -132,7 +132,8 @@ class Trainer():
             self.init_GAN()
 
         self.GAN.train()
-        total_noise_loss = torch.tensor(0.).to(device)
+        total_disc_loss = torch.tensor(0.).to(device)
+        total_gen_loss = torch.tensor(0.).to(device)
 
         batch_size = self.batch_size
 
@@ -140,14 +141,93 @@ class Trainer():
         latent_dim = self.GAN.G.latent_dim
         num_layers = self.GAN.G.num_layers
 
-        #trian noise layers
-        get_latents_fn = mixed_list if random() < self.mixed_prob else noise_list
-        style = get_latents_fn(batch_size, num_layers, latent_dim)
-        
+        apply_gradient_penalty = self.steps % 4 == 0
+        apply_path_penalty = self.steps % 32 == 0
 
-        noise = image_noise(batch_size, image_size)
+        # train discriminator
 
+        avg_pl_length = self.pl_mean
+        self.GAN.D_opt.zero_grad()
 
+        for i in range(self.gradient_accumulate_every):
+            get_latents_fn = mixed_list if random() < self.mixed_prob else noise_list
+            style = get_latents_fn(batch_size, num_layers, latent_dim)
+            noise = image_noise(batch_size, image_size)
+
+            w_space = latent_to_w(self.GAN.S, style)
+            w_styles = styles_def_to_tensor(w_space)
+
+            generated_images = self.GAN.G(w_styles, noise)
+            fake_output = self.GAN.D(generated_images.clone().detach())
+
+            image_batch = next(self.loader).to(device)
+            image_batch.requires_grad_()
+            real_output = self.GAN.D(image_batch)
+
+            divergence = (F.relu(1 + real_output) +
+                          F.relu(1 - fake_output)).mean()
+            disc_loss = divergence
+
+            if apply_gradient_penalty:
+                gp = gradient_penalty(image_batch, real_output)
+                self.last_gp_loss = gp.clone().detach().item()
+                disc_loss = disc_loss + gp
+
+            disc_loss = disc_loss / self.gradient_accumulate_every
+            disc_loss.register_hook(raise_if_nan)
+            disc_loss.backward()
+
+            total_disc_loss += divergence.detach().item(
+            ) / self.gradient_accumulate_every
+
+        self.d_loss = float(total_disc_loss)
+        self.GAN.D_opt.step()
+
+        # train generator
+
+        self.GAN.G_opt.zero_grad()
+        for i in range(self.gradient_accumulate_every):
+            style = get_latents_fn(batch_size, num_layers, latent_dim)
+            noise = image_noise(batch_size, image_size)
+
+            w_space = latent_to_w(self.GAN.S, style)
+            w_styles = styles_def_to_tensor(w_space)
+
+            generated_images = self.GAN.G(w_styles, noise)
+            fake_output = self.GAN.D(generated_images)
+            loss = fake_output.mean()
+            gen_loss = loss
+
+            if apply_path_penalty:
+                std = 0.1 / (w_styles.std(dim=0, keepdim=True) + EPS)
+                w_styles_2 = w_styles + \
+                    torch.randn(w_styles.shape).to(device) / (std + EPS)
+                pl_images = self.GAN.G(w_styles_2, noise)
+                pl_lengths = ((pl_images - generated_images)**2).mean(dim=(1,
+                                                                           2,
+                                                                           3))
+                avg_pl_length = np.mean(pl_lengths.detach().cpu().numpy())
+
+                if self.pl_mean is not None:
+                    pl_loss = ((pl_lengths - self.pl_mean)**2).mean()
+                    if not torch.isnan(pl_loss):
+                        gen_loss = gen_loss + pl_loss
+
+            gen_loss = gen_loss / self.gradient_accumulate_every
+            gen_loss.register_hook(raise_if_nan)
+            gen_loss.backward()
+
+            total_gen_loss += loss.detach().item(
+            ) / self.gradient_accumulate_every
+
+        self.g_loss = float(total_gen_loss)
+        self.GAN.G_opt.step()
+
+        # calculate moving averages
+
+        if apply_path_penalty and not np.isnan(avg_pl_length):
+            self.pl_mean = self.pl_length_ma.update_average(
+                self.pl_mean, avg_pl_length)
 
         if self.steps % 10 == 0 and self.steps > 20000:
             self.GAN.EMA()
@@ -159,12 +239,12 @@ class Trainer():
 
         checkpoint_num = floor(self.steps / self.save_every)
 
-        # if any(torch.isnan(l) for l in (total_noise_loss)):
-        #     print(
-        #         f'NaN detected for generator or discriminator. Loading from checkpoint #{checkpoint_num}'
-        #     )
-        #     self.load(checkpoint_num)
-        #     raise NanException
+        if any(torch.isnan(l) for l in (total_gen_loss, total_disc_loss)):
+            print(
+                f'NaN detected for generator or discriminator. Loading from checkpoint #{checkpoint_num}'
+            )
+            self.load(checkpoint_num)
+            raise NanException
 
         # periodically save results
 
@@ -296,6 +376,7 @@ class Trainer():
 
         name = num
         if num == -1:
+
             file_paths = [
                 p for p in Path(self.models_dir / self.name).glob('model_*.pt')
             ]

@@ -61,7 +61,7 @@ class StyleGAN2(nn.Module):
 
     def reset_parameter_averaging(self):
         self.SE.load_state_dict(self.S.state_dict())
-        self.SE.load_state_dict(self.N.state_dict())
+        self.NE.load_state_dict(self.N.state_dict())
         self.GE.load_state_dict(self.G.state_dict())
 
     def forward(self, x):

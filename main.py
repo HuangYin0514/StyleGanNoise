@@ -59,6 +59,7 @@ def train_from_folder(data='../../gan/custom_dataset',
                   mininterval=10., desc=f'{name}<{data}>'):
         # train
         retry_call(model.train, tries=3, exceptions=NanException)
+
         # stop time
         if _ % 500 == 0:
             if datetime.now().timestamp() - train_now > 29880:

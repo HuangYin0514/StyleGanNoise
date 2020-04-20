@@ -9,6 +9,7 @@ device = torch.device("cuda:0" if (torch.cuda.is_available()) else "cpu")
 
 
 class NanException(Exception):
+    print('find a exception of NanException in utils')
     pass
 
 

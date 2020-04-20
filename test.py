@@ -8,7 +8,7 @@ import fire
 
 
 def make_trouble(a=1, b=2, c=3, d=4, *args, **kwargs):
-    print(a, b, c, d, d, e)
+    print(a, b, c, d, d)
     print(*args)
     print(kwargs)
 

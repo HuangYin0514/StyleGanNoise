@@ -140,13 +140,17 @@ class Trainer():
         latent_dim = self.GAN.G.latent_dim
         num_layers = self.GAN.G.num_layers
 
-        #trian noise layers
+        # trian noise layers
         get_latents_fn = mixed_list if random() < self.mixed_prob else noise_list
         style = get_latents_fn(batch_size, num_layers, latent_dim)
-        
+        noise = custom_image_nosie(batch_size, 100)
 
-        noise = image_noise(batch_size, image_size)
 
+        w_space = latent_to_w(self.GAN.S, style)
+        w_styles = styles_def_to_tensor(w_space)
+        noise_space = latent_to_nosie(self.GAN.N, noise)
+
+        generated_images = self.GAN.G(w_styles, noise_space)
 
 
         if self.steps % 10 == 0 and self.steps > 20000:

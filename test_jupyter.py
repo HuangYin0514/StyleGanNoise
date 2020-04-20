@@ -4,12 +4,17 @@
 from IPython import get_ipython
 import torch
 import numpy as np
-from torch import nn
+import time
+from retry.api import retry_call
+from utils import *
+import fire
+from net import *
 
 # %%
-list1 = [1, 2, 3, 4]
-
-list2 = [1, 2, 3, 4]
-list1 + list2
-
+bs = 12
+a = custom_image_nosie(bs, 100)
+noiseVectorizer = NoiseVectorizer(100)
+res = latent_to_nosie(noiseVectorizer, a)
+print(res)
 # %%
+NoiseVectorizer

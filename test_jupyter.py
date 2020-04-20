@@ -20,9 +20,6 @@ print(res)
 
 # %%
 custom_GAN = StyleGAN2(64)
-custom_GAN.load_state_dict(
-    torch.load('model_10.pt',
-               map_location=torch.device(device)))
 load_temp = torch.load(
     'model_10.pt', map_location=torch.device(device))
 

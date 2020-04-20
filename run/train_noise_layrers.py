@@ -140,16 +140,54 @@ class Trainer():
         latent_dim = self.GAN.G.latent_dim
         num_layers = self.GAN.G.num_layers
 
+        apply_path_penalty = self.steps % 32 == 0
+
         # trian noise layers
-        get_latents_fn = mixed_list if random() < self.mixed_prob else noise_list
-        style = get_latents_fn(batch_size, num_layers, latent_dim)
-        noise = custom_image_nosie(batch_size, 100)
+        avg_pl_length = self.pl_mean
+        self.GAN.N_opt.zero_grad()
+        for i in range(self.gradient_accumulate_every):
+            get_latents_fn = mixed_list if random() < self.mixed_prob else noise_list
+            style = get_latents_fn(batch_size, num_layers, latent_dim)
+            noise = custom_image_nosie(batch_size, 100)
 
-        w_space = latent_to_w(self.GAN.S, style)
-        w_styles = styles_def_to_tensor(w_space)
-        noise_space = latent_to_nosie(self.GAN.N, noise)
+            w_space = latent_to_w(self.GAN.S, style)
+            w_styles = styles_def_to_tensor(w_space)
+            noise_space = latent_to_nosie(self.GAN.N, noise)
+            # fake
+            generated_images = self.GAN.G(w_styles, noise_space)
+            fake_output = self.GAN.D(generated_images)
+            loss = fake_output.mean()
+            gen_loss = loss
 
-        generated_images = self.GAN.G(w_styles, noise_space)
+            if apply_path_penalty:
+                std = 0.1 / (w_styles.std(dim=0, keepdim=True) + EPS)
+                w_styles_2 = w_styles + \
+                    torch.randn(w_styles.shape).to(device) / (std + EPS)
+                pl_images = self.GAN.G(w_styles_2, noise)
+                pl_lengths = ((pl_images - generated_images)**2).mean(dim=(1,
+                                                                           2,
+                                                                           3))
+                avg_pl_length = np.mean(pl_lengths.detach().cpu().numpy())
+
+                if self.pl_mean is not None:
+                    pl_loss = ((pl_lengths - self.pl_mean)**2).mean()
+                    if not torch.isnan(pl_loss):
+                        gen_loss = gen_loss + pl_loss
+
+            gen_loss = gen_loss / self.gradient_accumulate_every
+            gen_loss.register_hook(raise_if_nan)
+            gen_loss.backward()
+
+            total_noise_loss += loss.detach().item(
+            ) / self.gradient_accumulate_every
+
+        self.g_loss = float(total_noise_loss)
+        self.GAN.N_opt.step()
+
+        # calculate moving averages
+        if apply_path_penalty and not np.isnan(avg_pl_length):
+            self.pl_mean = self.pl_length_ma.update_average(
+                self.pl_mean, avg_pl_length)
 
         if self.steps % 10 == 0 and self.steps > 20000:
             self.GAN.EMA()
@@ -161,12 +199,12 @@ class Trainer():
 
         checkpoint_num = floor(self.steps / self.save_every)
 
-        # if any(torch.isnan(l) for l in (total_noise_loss)):
-        #     print(
-        #         f'NaN detected for generator or discriminator. Loading from checkpoint #{checkpoint_num}'
-        #     )
-        #     self.load(checkpoint_num)
-        #     raise NanException
+        if any(torch.isnan(l) for l in (total_noise_loss)):
+            print(
+                f'NaN detected for generator or discriminator. Loading from checkpoint #{checkpoint_num}'
+            )
+            self.load_part_state_dict(checkpoint_num)
+            raise NanException
 
         # periodically save results
 
@@ -200,7 +238,9 @@ class Trainer():
 
         # latents and noise
         latents = noise_list(num_rows**2, num_layers, latent_dim)
-        n = image_noise(num_rows**2, image_size)
+
+        noise = custom_image_nosie(batch_size, 100)
+        n = latent_to_nosie(self.GAN.N, noise)
 
         # regular
         generated_images = generate_images(self.GAN.S, self.GAN.G, latents, n)
@@ -312,4 +352,29 @@ class Trainer():
         self.GAN.load_state_dict(
             torch.load(load_model_name,
                        map_location=torch.device(device)))
+        print(load_model_name)
+
+    def load_part_state_dict(self, num=-1):
+        self.load_config()
+
+        name = num
+        if num == -1:
+            file_paths = [
+                p for p in Path(self.models_dir / self.name).glob('model_*.pt')
+            ]
+            saved_nums = sorted(
+                map(lambda x: int(x.stem.split('_')[1]), file_paths))
+            if len(saved_nums) == 0:
+                return
+            name = saved_nums[-1]
+            print(f'continuing from previous epoch - {name}')
+        self.steps = name * self.save_every
+        load_model_name = f'model_{name}.pt'
+
+        load_temp_GAN = torch.load(
+            load_model_name, map_location=torch.device(device))
+
+        for state_name in load_temp_GAN:
+            self.GAN.state_dict()[state_name][:] = load_temp_GAN[state_name]
+
         print(load_model_name)

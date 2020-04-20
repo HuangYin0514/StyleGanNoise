@@ -40,7 +40,7 @@ def train_from_folder(data='../../gan/custom_dataset',
                     trunc_psi=trunc_psi)
 
     if not new:
-        trainer.load(load_from)
+        trainer.load_part_state_dict(load_from)
     else:
         trainer.clear()
 

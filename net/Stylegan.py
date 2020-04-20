@@ -6,7 +6,7 @@ from net import *
 
 
 class StyleGAN2(nn.Module):
-    def __init__(self, image_size, latent_dim=512, noise_dim=512, style_depth=8,
+    def __init__(self, image_size, latent_dim=512, noise_dim=100, style_depth=8,
                  network_capacity=16, transparent=False, steps=1, lr=1e-4):
         super().__init__()
         self.lr = lr

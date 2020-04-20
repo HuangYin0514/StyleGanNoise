@@ -10,4 +10,5 @@ if __name__ == '__main__':
     bs = 12
     a = custom_image_nosie(bs, 100)
     res = latent_to_nosie(NoiseVectorizer, a)
+    print('123')
     print(res)

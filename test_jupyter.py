@@ -18,3 +18,4 @@ res = latent_to_nosie(noiseVectorizer, a)
 print(res)
 # %%
 NoiseVectorizer
+res

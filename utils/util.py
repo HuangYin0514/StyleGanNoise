@@ -71,8 +71,13 @@ def image_noise(n, im_size):
     return torch.FloatTensor(n, im_size, im_size, 1).uniform_(0., 1.).to(device)
 
 
-def custom_image_noise(n, latent_dim):
-    return torch.FloatTensor(n, latent_dim).uniform_(-1, 1).to(device)
+def custom_image_nosie(n, latent_dim):
+    return torch.FloatTensor(n, latent_dim).uniform_(-1., 1.).to(device)
+
+
+def latent_to_nosie(noise_vectorizer, latent_descr):
+    return noise_vectorizer(latent_descr)
+
 
 def leaky_relu(p):
     return nn.LeakyReLU(p, inplace=True)

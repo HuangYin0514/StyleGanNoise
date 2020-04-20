@@ -11,5 +11,8 @@ if __name__ == '__main__':
     a = custom_image_nosie(bs, 100)
     res = latent_to_nosie(NoiseVectorizer, a)
     print('123')
-    ###SAKDJFKSAJDFLKJS;ALKFJ
-    ####KJFDSALKFJALS DF
+    ####
+    #1
+    #2
+    #3
+    print(res)

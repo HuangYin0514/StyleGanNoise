@@ -163,7 +163,7 @@ class Trainer():
                 std = 0.1 / (w_styles.std(dim=0, keepdim=True) + EPS)
                 w_styles_2 = w_styles + \
                     torch.randn(w_styles.shape).to(device) / (std + EPS)
-                pl_images = self.GAN.G(w_styles_2, noise)
+                pl_images = self.GAN.G(w_styles_2, noise_space)
                 pl_lengths = ((pl_images - generated_images)**2).mean(dim=(1,
                                                                            2,
                                                                            3))
@@ -199,7 +199,7 @@ class Trainer():
 
         checkpoint_num = floor(self.steps / self.save_every)
 
-        if any(torch.isnan(l) for l in (total_noise_loss)):
+        if any(torch.isnan(l) for l in (total_noise_loss,)):
             print(
                 f'NaN detected for generator or discriminator. Loading from checkpoint #{checkpoint_num}'
             )
@@ -239,8 +239,8 @@ class Trainer():
         # latents and noise
         latents = noise_list(num_rows**2, num_layers, latent_dim)
 
-        noise = custom_image_nosie(batch_size, 100)
-        n = latent_to_nosie(self.GAN.N, noise)
+        custom_noise = custom_image_nosie(num_rows**2, 100)
+        n = latent_to_nosie(self.GAN.N, custom_noise)
 
         # regular
         generated_images = generate_images(self.GAN.S, self.GAN.G, latents, n)
